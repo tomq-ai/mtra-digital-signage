@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neat – Meeting Spaces</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple:    #7c5cfc;
+      --purple-lt: #a98bfd;
+      --white:     #ffffff;
+      --off-white: rgba(255,255,255,0.82);
+      --dim:       rgba(0,0,0,0.48);
+      --slide-dur: 7000ms;
+      --fade-dur:  900ms;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #0a0a0f;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    /* ── Video background ── */
+    #bg-video {
+      position: fixed;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      filter: brightness(0.72) saturate(1.1);
+    }
+
+    /* gradient vignette */
+    #bg-video::after { content: ''; }
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse 80% 80% at 50% 110%, rgba(0,0,0,0.65) 0%, transparent 70%),
+        linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 55%),
+        linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 40%);
+      pointer-events: none;
+    }
+
+    /* ── Slides container ── */
+    .slides {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: clamp(40px, 7vw, 96px) clamp(40px, 8vw, 110px);
+      opacity: 0;
+      transition: opacity var(--fade-dur) ease;
+      pointer-events: none;
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* eyebrow label */
+    .slide-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: clamp(11px, 1.1vw, 14px);
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--purple-lt);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .slide-label::before {
+      content: '';
+      display: inline-block;
+      width: 28px; height: 2px;
+      background: var(--purple-lt);
+      border-radius: 2px;
+    }
+
+    /* headline */
+    .slide-heading {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(36px, 6vw, 86px);
+      font-weight: 800;
+      line-height: 1.03;
+      color: var(--white);
+      max-width: 14ch;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+
+    /* body copy */
+    .slide-body {
+      font-size: clamp(14px, 1.5vw, 19px);
+      font-weight: 300;
+      color: var(--off-white);
+      max-width: 46ch;
+      line-height: 1.65;
+    }
+
+    /* ── Neat logo (top-left) ── */
+    .logo {
+      position: fixed;
+      top: clamp(28px, 4vw, 48px);
+      left: clamp(40px, 8vw, 110px);
+      z-index: 10;
+      opacity: 0.92;
+    }
+    .logo svg { height: clamp(22px, 2.5vw, 30px); }
+
+    /* ── Slide indicators (bottom-right) ── */
+    .indicators {
+      position: fixed;
+      bottom: clamp(36px, 5vw, 60px);
+      right: clamp(40px, 8vw, 110px);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      transition: background 0.4s, transform 0.4s;
+      cursor: pointer;
+    }
+    .dot.active {
+      background: var(--purple-lt);
+      transform: scale(1.5);
+    }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      position: fixed;
+      bottom: 0; left: 0;
+      height: 3px;
+      width: 0%;
+      background: linear-gradient(90deg, var(--purple), var(--purple-lt));
+      z-index: 10;
+      transition: width var(--fade-dur) linear;
+    }
+    .progress-bar.running {
+      transition: width var(--slide-dur) linear;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background video -->
+  <video id="bg-video" autoplay muted loop playsinline>
+    <source src="https://cdn.neat.no/v3/content/assets/img/home-theater/home-page-2025-10/home-page-2025-10-1m-min50k.mp4" type="video/mp4" />
+  </video>
+  <div class="vignette"></div>
+
+  <!-- Neat wordmark -->
+  <div class="logo">
+    <svg viewBox="0 0 72 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Neat">
+      <path d="M0 0h6.4l11.2 16V0H24v24h-6.4L6.4 8V24H0V0z" fill="#fff"/>
+      <path d="M28 0h20v5.6H34.4v4.4H46v5.2H34.4v3.2H48V24H28V0z" fill="#fff"/>
+      <path d="M52 5.6V0h20v5.6h-6.8V24h-6.4V5.6H52z" fill="#fff"/>
+    </svg>
+  </div>
+
+  <!-- Slides -->
+  <div class="slides" id="slides">
+
+    <div class="slide active" data-index="0">
+      <div class="slide-label">Welcome</div>
+      <h1 class="slide-heading">Meeting Spaces,<br>the Neat Way</h1>
+      <p class="slide-body">Purpose-built devices for Microsoft Teams and Zoom — designed to make every meeting feel like you're in the room together.</p>
+    </div>
+
+    <div class="slide" data-index="1">
+      <div class="slide-label">Crystal-Clear Video</div>
+      <h1 class="slide-heading">See Every Detail,<br>Every Time</h1>
+      <p class="slide-body">Intelligent cameras with automatic framing ensure everyone is seen clearly, whether they're in the front row or the back corner.</p>
+    </div>
+
+    <div class="slide" data-index="2">
+      <div class="slide-label">Hybrid Work</div>
+      <h1 class="slide-heading">Rooms Built for<br>How You Work</h1>
+      <p class="slide-body">From personal huddle spaces to large boardrooms — Neat has a solution that fits your space and your team's needs.</p>
+    </div>
+
+    <div class="slide" data-index="3">
+      <div class="slide-label">Seamless Setup</div>
+      <h1 class="slide-heading">Up and Running<br>in Minutes</h1>
+      <p class="slide-body">Plug in, sign in, and start meeting. Neat devices are designed for zero-friction deployment across your entire organisation.</p>
+    </div>
+
+  </div>
+
+  <!-- Indicators -->
+  <div class="indicators" id="indicators">
+    <div class="dot active" data-index="0"></div>
+    <div class="dot" data-index="1"></div>
+    <div class="dot" data-index="2"></div>
+    <div class="dot" data-index="3"></div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-bar" id="progress"></div>
+
+  <script>
+    const slides     = document.querySelectorAll('.slide');
+    const dots       = document.querySelectorAll('.dot');
+    const progress   = document.getElementById('progress');
+    const TOTAL      = slides.length;
+    const DURATION   = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--slide-dur'));
+    let current      = 0;
+    let timer        = null;
+
+    function goTo(index) {
+      slides[current].classList.remove('active');
+      dots[current].classList.remove('active');
+      current = (index + TOTAL) % TOTAL;
+      slides[current].classList.add('active');
+      dots[current].classList.add('active');
+      resetProgress();
+    }
+
+    function resetProgress() {
+      progress.classList.remove('running');
+      progress.style.transition = 'none';
+      progress.style.width = '0%';
+      // force reflow
+      progress.offsetWidth;
+      progress.classList.add('running');
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      timer = setInterval(() => goTo(current + 1), DURATION);
+    }
+
+    // Dot click
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        goTo(parseInt(dot.dataset.index));
+        startTimer();
+      });
+    });
+
+    // Init
+    resetProgress();
+    startTimer();
+  </script>
+
+</body>
+</html>
